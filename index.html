@@ -1,0 +1,829 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Continuous Probability Modeling</title>
+
+<script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+
+<style>
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:#eef2f7;
+    color:#222;
+}
+
+header{
+    background:linear-gradient(90deg,#1f4e79,#2d6ca2);
+    color:white;
+    padding:25px;
+    text-align:center;
+}
+
+.container{
+    width:95%;
+    margin:auto;
+    padding:20px;
+}
+
+.card{
+    background:white;
+    border-radius:12px;
+    padding:20px;
+    margin-bottom:20px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.1);
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:320px 1fr;
+    gap:20px;
+}
+
+label{
+    display:block;
+    margin-top:12px;
+    font-weight:bold;
+}
+
+input,select,textarea{
+    width:100%;
+    padding:10px;
+    margin-top:5px;
+    border-radius:6px;
+    border:1px solid #ccc;
+}
+
+button{
+    margin-top:15px;
+    width:100%;
+    padding:12px;
+    border:none;
+    background:#1f4e79;
+    color:white;
+    font-size:15px;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#163955;
+}
+
+.result{
+    margin-top:15px;
+    background:#eef6ff;
+    padding:12px;
+    border-radius:8px;
+}
+
+#graph,#dataGraph{
+    height:650px;
+}
+
+.infoBox{
+    background:#fff7d6;
+    padding:10px;
+    border-radius:8px;
+    margin-top:15px;
+}
+
+h2{
+    margin-top:0;
+}
+
+@media(max-width:900px){
+
+    .grid{
+        grid-template-columns:1fr;
+    }
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<h1>Continuous Probability Modeling</h1>
+
+<p>
+Interactive Simulation and Data Modeling
+</p>
+
+</header>
+
+<div class="container">
+
+<!-- SIMULATION MODE -->
+
+<div class="card">
+
+<h2>Simulation Mode (C8)</h2>
+
+<div class="grid">
+
+<div>
+
+<label>Distribution</label>
+
+<select id="distribution">
+
+<option value="uniform">Uniform</option>
+<option value="triangular">Triangular</option>
+<option value="linearInc">Linear Increasing</option>
+<option value="linearDec">Linear Decreasing</option>
+<option value="piecewise">Piecewise</option>
+<option value="normal">Normal</option>
+
+</select>
+
+<div id="parameters"></div>
+
+<hr>
+
+<h3>Probability Calculator</h3>
+
+<label>Lower Bound</label>
+<input type="number" id="lower" value="2">
+
+<label>Upper Bound</label>
+<input type="number" id="upper" value="6">
+
+<label>Calculation Type</label>
+
+<select id="probType">
+
+<option value="between">Between</option>
+<option value="below">Below Upper Bound</option>
+<option value="above">Above Lower Bound</option>
+
+</select>
+
+<button onclick="drawDistribution()">
+Update Distribution
+</button>
+
+<div class="result" id="probResult">
+
+<b>Probability:</b> 0
+
+<hr>
+
+<div id="selectedRegion">
+
+Click two points on the graph to select a region.
+
+</div>
+
+</div>
+
+<div class="infoBox">
+
+<b>Interactive Features:</b>
+
+<ul>
+<li>Hover graph for PDF values</li>
+<li>Click graph to select probability regions</li>
+<li>Automatic shading</li>
+<li>Dynamic parameter updates</li>
+<li>Real-time probability calculations</li>
+<li>Upload CSV or TXT files</li>
+</ul>
+
+</div>
+
+</div>
+
+<div id="graph"></div>
+
+</div>
+
+</div>
+
+<!-- DATA MODELING -->
+
+<div class="card">
+
+<h2>Data Modeling Mode (C9)</h2>
+
+<div class="grid">
+
+<div>
+
+<label>Upload CSV or TXT File</label>
+
+<input type="file" id="fileInput">
+
+<label>Or Paste Data</label>
+
+<textarea id="dataInput" rows="10">
+2,3,4,5,5,6,7,8,4,5,6,7,8,9
+</textarea>
+
+<label>Fit Distribution</label>
+
+<select id="fitType">
+
+<option value="normal">Normal</option>
+<option value="uniform">Uniform</option>
+
+</select>
+
+<button onclick="fitData()">
+Fit Distribution
+</button>
+
+<div class="result" id="fitResult">
+
+Estimated parameters will appear here.
+
+</div>
+
+</div>
+
+<div id="dataGraph"></div>
+
+</div>
+
+</div>
+
+<!-- GITHUB -->
+
+<div class="card">
+
+<h2>GitHub Pages Deployment</h2>
+
+<p>
+Replace this link after deployment:
+</p>
+
+<a href="#">
+https://yourusername.github.io/probability-modeling/
+</a>
+
+</div>
+
+</div>
+
+<script>
+
+let clickPoints = [];
+
+document.getElementById("distribution")
+.addEventListener("change",createParameters);
+
+document.getElementById("fileInput")
+.addEventListener("change",loadFile);
+
+function createParameters(){
+
+    let dist=document.getElementById("distribution").value;
+
+    let html="";
+
+    if(dist==="uniform"){
+
+        html=`
+
+        <label>a (minimum)</label>
+        <input type="number" id="a" value="0">
+
+        <label>b (maximum)</label>
+        <input type="number" id="b" value="10">
+
+        `;
+
+    }
+
+    if(dist==="triangular"){
+
+        html=`
+
+        <label>a</label>
+        <input type="number" id="a" value="0">
+
+        <label>c (mode)</label>
+        <input type="number" id="c" value="5">
+
+        <label>b</label>
+        <input type="number" id="b" value="10">
+
+        `;
+
+    }
+
+    if(dist==="linearInc" || dist==="linearDec"){
+
+        html=`
+
+        <label>a</label>
+        <input type="number" id="a" value="0">
+
+        <label>b</label>
+        <input type="number" id="b" value="10">
+
+        `;
+
+    }
+
+    if(dist==="piecewise"){
+
+        html=`
+
+        <p>
+        Piecewise distribution:
+        constant from 0 to 3 and increasing from 3 to 6.
+        </p>
+
+        `;
+
+    }
+
+    if(dist==="normal"){
+
+        html=`
+
+        <label>Mean (μ)</label>
+        <input type="number" id="mu" value="0">
+
+        <label>Standard Deviation (σ)</label>
+        <input type="number" id="sigma" value="1">
+
+        `;
+
+    }
+
+    document.getElementById("parameters").innerHTML=html;
+
+}
+
+function linspace(start,end,n){
+
+    let arr=[];
+
+    let step=(end-start)/(n-1);
+
+    for(let i=0;i<n;i++){
+
+        arr.push(start+i*step);
+
+    }
+
+    return arr;
+
+}
+
+function erf(x){
+
+    const sign=x>=0?1:-1;
+
+    x=Math.abs(x);
+
+    const a1=0.254829592;
+    const a2=-0.284496736;
+    const a3=1.421413741;
+    const a4=-1.453152027;
+    const a5=1.061405429;
+    const p=0.3275911;
+
+    const t=1/(1+p*x);
+
+    const y=1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)
+    *t*Math.exp(-x*x);
+
+    return sign*y;
+
+}
+
+function normalCDF(x,mu,sigma){
+
+    return 0.5*(1+erf((x-mu)/(sigma*Math.sqrt(2))));
+
+}
+
+function drawDistribution(){
+
+    let dist=document.getElementById("distribution").value;
+
+    let lower=parseFloat(document.getElementById("lower").value);
+
+    let upper=parseFloat(document.getElementById("upper").value);
+
+    let mode=document.getElementById("probType").value;
+
+    let x=[];
+    let y=[];
+
+    let probability=0;
+
+    if(dist==="uniform"){
+
+        let a=parseFloat(document.getElementById("a").value);
+
+        let b=parseFloat(document.getElementById("b").value);
+
+        x=linspace(a-2,b+2,500);
+
+        y=x.map(v=>(v>=a&&v<=b)?1/(b-a):0);
+
+        if(mode==="between"){
+
+            probability=
+            (Math.min(upper,b)-Math.max(lower,a))/(b-a);
+
+        }
+
+        if(mode==="below"){
+
+            probability=
+            (Math.min(upper,b)-a)/(b-a);
+
+        }
+
+        if(mode==="above"){
+
+            probability=
+            (b-Math.max(lower,a))/(b-a);
+
+        }
+
+    }
+
+    if(dist==="normal"){
+
+        let mu=parseFloat(document.getElementById("mu").value);
+
+        let sigma=parseFloat(document.getElementById("sigma").value);
+
+        x=linspace(mu-4*sigma,mu+4*sigma,500);
+
+        y=x.map(v=>
+
+        (1/(sigma*Math.sqrt(2*Math.PI)))
+        *Math.exp(-0.5*Math.pow((v-mu)/sigma,2))
+
+        );
+
+        if(mode==="between"){
+
+            probability=
+            normalCDF(upper,mu,sigma)
+            -normalCDF(lower,mu,sigma);
+
+        }
+
+        if(mode==="below"){
+
+            probability=
+            normalCDF(upper,mu,sigma);
+
+        }
+
+        if(mode==="above"){
+
+            probability=
+            1-normalCDF(lower,mu,sigma);
+
+        }
+
+    }
+
+    if(dist==="triangular"){
+
+        let a=parseFloat(document.getElementById("a").value);
+
+        let b=parseFloat(document.getElementById("b").value);
+
+        let c=parseFloat(document.getElementById("c").value);
+
+        x=linspace(a,b,500);
+
+        y=x.map(v=>{
+
+            if(v<a || v>b) return 0;
+
+            if(v<=c){
+
+                return 2*(v-a)/((b-a)*(c-a));
+
+            }
+
+            return 2*(b-v)/((b-a)*(b-c));
+
+        });
+
+    }
+
+    if(dist==="linearInc"){
+
+        let a=parseFloat(document.getElementById("a").value);
+
+        let b=parseFloat(document.getElementById("b").value);
+
+        x=linspace(a,b,500);
+
+        y=x.map(v=>{
+
+            if(v<a || v>b) return 0;
+
+            return 2*(v-a)/Math.pow((b-a),2);
+
+        });
+
+    }
+
+    if(dist==="linearDec"){
+
+        let a=parseFloat(document.getElementById("a").value);
+
+        let b=parseFloat(document.getElementById("b").value);
+
+        x=linspace(a,b,500);
+
+        y=x.map(v=>{
+
+            if(v<a || v>b) return 0;
+
+            return 2*(b-v)/Math.pow((b-a),2);
+
+        });
+
+    }
+
+    if(dist==="piecewise"){
+
+        x=linspace(0,6,500);
+
+        y=x.map(v=>{
+
+            if(v>=0 && v<3) return 0.15;
+
+            if(v>=3 && v<=6)
+            return 0.05*(v-3)+0.15;
+
+            return 0;
+
+        });
+
+    }
+
+    probability=Math.max(0,Math.min(1,probability));
+
+    document.getElementById("probResult").innerHTML=
+
+    "<b>Probability:</b> "
+    + probability.toFixed(5)
+
+    + "<hr>"
+
+    + "<b>Selected Region:</b><br>"
+
+    + "Lower Bound = "
+    + lower.toFixed(4)
+
+    + "<br>"
+
+    + "Upper Bound = "
+    + upper.toFixed(4)
+
+    + "<br><br>"
+
+    + "<small>"
+    + "You can also select regions directly by clicking the graph."
+    + "</small>";
+
+    let shadeX=[];
+    let shadeY=[];
+
+    for(let i=0;i<x.length;i++){
+
+        if(
+
+            (mode==="between" && x[i]>=lower && x[i]<=upper)
+            ||
+            (mode==="below" && x[i]<=upper)
+            ||
+            (mode==="above" && x[i]>=lower)
+
+        ){
+
+            shadeX.push(x[i]);
+            shadeY.push(y[i]);
+
+        }
+
+    }
+
+    let trace1={
+
+        x:x,
+        y:y,
+        mode:'lines',
+        type:'scatter',
+        name:'PDF',
+        line:{color:'#1f4e79',width:3}
+
+    };
+
+    let trace2={
+
+        x:[...shadeX,...shadeX.reverse()],
+        y:[...shadeY,...Array(shadeY.length).fill(0)],
+        fill:'toself',
+        fillcolor:'rgba(255,0,0,0.35)',
+        line:{color:'transparent'},
+        type:'scatter',
+        name:'Probability Region'
+
+    };
+
+    Plotly.newPlot("graph",[trace1,trace2],{
+
+        title:'Interactive Probability Density Function',
+        hovermode:'closest'
+
+    });
+
+    document.getElementById("graph")
+    .on('plotly_click', function(data){
+
+        let xVal = data.points[0].x;
+
+        clickPoints.push(xVal);
+
+        if(clickPoints.length === 1){
+
+            alert(
+                "First point selected:\n\n"
+                + xVal.toFixed(4)
+                + "\n\nSelect another point."
+            );
+
+        }
+
+        if(clickPoints.length === 2){
+
+            let p1 = Math.min(clickPoints[0], clickPoints[1]);
+            let p2 = Math.max(clickPoints[0], clickPoints[1]);
+
+            document.getElementById("lower").value = p1.toFixed(4);
+            document.getElementById("upper").value = p2.toFixed(4);
+
+            document.getElementById("probType").value = "between";
+
+            clickPoints = [];
+
+            drawDistribution();
+
+        }
+
+    });
+
+}
+
+function fitData(){
+
+    let raw=document.getElementById("dataInput").value;
+
+    let data=raw.split(/[\s,]+/)
+    .map(Number)
+    .filter(v=>!isNaN(v));
+
+    if(data.length===0){
+
+        alert("Please enter valid data.");
+
+        return;
+
+    }
+
+    let fit=document.getElementById("fitType").value;
+
+    let mean=
+    data.reduce((a,b)=>a+b,0)/data.length;
+
+    let variance=
+    data.reduce((a,b)=>
+    a+Math.pow(b-mean,2),0)/data.length;
+
+    let std=Math.sqrt(variance);
+
+    let min=Math.min(...data);
+
+    let max=Math.max(...data);
+
+    let x=[];
+    let y=[];
+
+    if(fit==="normal"){
+
+        x=linspace(mean-4*std,mean+4*std,500);
+
+        y=x.map(v=>
+
+        (1/(std*Math.sqrt(2*Math.PI)))
+        *Math.exp(-0.5*Math.pow((v-mean)/std,2))
+
+        );
+
+        document.getElementById("fitResult").innerHTML=
+
+        "<b>Estimated Parameters</b><br>"
+        +"μ = "+mean.toFixed(4)
+        +"<br>σ = "+std.toFixed(4);
+
+    }
+
+    if(fit==="uniform"){
+
+        x=linspace(min,max,500);
+
+        y=x.map(v=>
+
+        (v>=min && v<=max)?1/(max-min):0
+
+        );
+
+        document.getElementById("fitResult").innerHTML=
+
+        "<b>Estimated Parameters</b><br>"
+        +"a = "+min.toFixed(4)
+        +"<br>b = "+max.toFixed(4);
+
+    }
+
+    let hist={
+
+        x:data,
+        type:'histogram',
+        histnorm:'probability density',
+        opacity:0.6,
+        marker:{color:'#5fa8ff'},
+        name:'Histogram'
+
+    };
+
+    let pdf={
+
+        x:x,
+        y:y,
+        mode:'lines',
+        type:'scatter',
+        line:{color:'red',width:3},
+        name:'Fitted PDF'
+
+    };
+
+    Plotly.newPlot("dataGraph",[hist,pdf],{
+
+        title:'Empirical Histogram vs Fitted PDF',
+        hovermode:'closest'
+
+    });
+
+}
+
+function loadFile(event){
+
+    let file=event.target.files[0];
+
+    if(!file) return;
+
+    let reader=new FileReader();
+
+    reader.onload=function(e){
+
+        document.getElementById("dataInput").value
+        =e.target.result;
+
+    };
+
+    reader.readAsText(file);
+
+}
+
+createParameters();
+
+drawDistribution();
+
+fitData();
+
+</script>
+
+</body>
+</html>
+```
